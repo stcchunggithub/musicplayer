@@ -1,0 +1,42 @@
+workflows:
+  ios-workflow:
+    name: MP3 Player iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      # Codemagic reads your signing certificate + provisioning profile
+      # from encrypted values you set in the Codemagic dashboard under
+      # this app's Environment variables / Code signing identities —
+      # see the README for exact steps. Nothing sensitive lives in this
+      # file itself.
+      ios_signing:
+        distribution_type: development
+        bundle_identifier: com.yourname.mp3player
+    scripts:
+      - name: Get Flutter packages
+        script: flutter packages pub get
+      - name: Set up code signing
+        script: keychain initialize
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_DEVELOPMENT \
+            --create
+      - name: Use signing files
+        script: keychain add-certificates
+      - name: Set up Xcode signing settings
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
